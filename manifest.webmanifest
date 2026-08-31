@@ -1,0 +1,39 @@
+{
+  "name": "SportHub — Interclasse",
+  "short_name": "SportHub",
+  "description": "Calendário, placar ao vivo, classificação e resultados do interclasse da escola.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "./aluno/painel.php",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#17191c",
+  "theme_color": "#17191c",
+  "categories": ["sports", "education"],
+  "icons": [
+    {
+      "src": "./img/Logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Jogos de hoje",
+      "short_name": "Jogos",
+      "url": "./aluno/jogos.php"
+    },
+    {
+      "name": "Classificação",
+      "short_name": "Tabela",
+      "url": "./aluno/classificacao.php"
+    },
+    {
+      "name": "Resultados",
+      "short_name": "Resultados",
+      "url": "./aluno/resultados.php"
+    }
+  ]
+}

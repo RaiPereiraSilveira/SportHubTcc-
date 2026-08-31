@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sem conexão — SportHub</title>
+<link rel="stylesheet" href="./css/style.css">
+<link rel="stylesheet" href="./css/u.css">
+</head>
+<body class="tela-credencial">
+<!--
+  offline.html — a página que o service worker (SH-69) serve quando a rede cai.
+
+  É HTML puro de propósito: precisa abrir sem PHP, sem banco e sem rede. Por
+  isso também não carrega fonte externa nem ícone remoto — só o CSS que já
+  está no cache.
+-->
+<main class="credencial-wrap">
+  <section class="credencial-card">
+    <header class="credencial-topo">
+      <span class="credencial-icone" aria-hidden="true">⚡</span>
+      <h1>Sem conexão</h1>
+      <p class="credencial-sub">
+        O celular está sem internet no momento. O SportHub precisa da rede para
+        mostrar placar, classificação e resultados atualizados.
+      </p>
+    </header>
+
+    <p class="credencial-texto">
+      No ginásio, o sinal costuma voltar perto da entrada. Assim que a conexão
+      voltar, toque em <strong>Tentar de novo</strong>.
+    </p>
+
+    <a class="btn btn-primary btn-bloco" href="./aluno/painel.php">Tentar de novo</a>
+
+    <p class="credencial-texto u-margin-top-16px">
+      Se você assinou o calendário do interclasse no aplicativo de agenda do
+      celular, os horários das próximas partidas continuam lá — aquele feed é
+      guardado pelo próprio aplicativo e funciona sem internet.
+    </p>
+  </section>
+</main>
+</body>
+</html>

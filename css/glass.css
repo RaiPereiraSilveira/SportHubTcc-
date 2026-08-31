@@ -1,0 +1,536 @@
+/* ==========================================================================
+   SPORTHUB — Camada "Liquid Glass"
+   --------------------------------------------------------------------------
+   Camada aditiva, carregada DEPOIS de css/site.css (site público) e de
+   css/style.css (painel). Não redefine layout: só troca a matéria de que as
+   superfícies são feitas — de papel opaco para vidro translúcido — e
+   acrescenta movimento.
+
+   Três regras que este arquivo respeita:
+
+   1. Degradação limpa. Todo o efeito de translucidez mora dentro de um
+      @supports (backdrop-filter). Onde o navegador não suportar, os cartões
+      continuam sólidos exatamente como antes — nada quebra, nada some.
+   2. Legibilidade acima do efeito. O vidro nunca fica transparente a ponto de
+      o texto disputar com o fundo: as opacidades foram escolhidas para manter
+      contraste AA nos dois temas.
+   3. Movimento opcional. Tudo é transform/opacity (composto na GPU) e some
+      inteiro em prefers-reduced-motion.
+   ========================================================================== */
+
+/* ── Interpolação do brilho ──────────────────────────────────────────────
+   Sem @property o navegador não sabe interpolar uma custom property, e o
+   brilho que segue o cursor apareceria "estalando". Registrando como número,
+   a transição fica contínua. Onde @property não existe, o valor simplesmente
+   troca sem transição — o efeito continua, só não desliza.               */
+@property --sh-glow {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
+}
+
+/* ── TOKENS DE VIDRO — tema claro ───────────────────────────────────────── */
+:root, [data-theme="light"] {
+    /* Fundo do vidro: branco leitoso. Alto o bastante para o texto escuro
+       manter contraste sobre qualquer coisa que passe atrás.              */
+    --glass-fill:    rgba(255, 255, 255, .62);
+    --glass-fill-2:  rgba(255, 255, 255, .38);
+    --glass-line:    rgba(255, 255, 255, .70);
+
+    /* Borda especular: claro em cima (luz), escuro embaixo (peso).        */
+    --glass-spec:    rgba(255, 255, 255, .95);
+    --glass-spec-2:  rgba(255, 255, 255, .40);
+    --glass-base:    rgba(20, 22, 26, .07);
+    /* Anel interno escuro: é ele que devolve a aresta ao cartão, já que a
+       borda branca sozinha desapareceria sobre o bege do fundo.          */
+    --glass-ring:    rgba(20, 22, 26, .11);
+
+    --glass-cast:    0 1px 1px rgba(20,22,26,.035), 0 14px 30px -20px rgba(20,22,26,.32);
+    --glass-cast-hi: 0 2px 4px rgba(20,22,26,.05),  0 34px 64px -28px rgba(20,22,26,.44);
+
+    --glass-blur:    16px;
+    --glass-sat:     172%;
+
+    /* Halo que segue o ponteiro. */
+    --glow-warm:     214 82 47;
+    --glow-cool:     255 255 255;
+
+    /* Aurora do plano de fundo — bem lavada, é textura, não decoração. */
+    --aur-1: rgba(214, 82, 47, .16);
+    --aur-2: rgba(42, 85, 131, .13);
+    --aur-3: rgba(28, 107, 74, .11);
+    --grid-line: rgba(20, 22, 26, .045);
+
+    /* Vidro sobre superfície escura (rodapé, CTA, placar, plano destacado). */
+    --glass-dark-fill: rgba(255, 255, 255, .07);
+    --glass-dark-line: rgba(255, 255, 255, .13);
+    --glass-dark-spec: rgba(255, 255, 255, .34);
+}
+
+/* ── TOKENS DE VIDRO — tema escuro ──────────────────────────────────────── */
+[data-theme="dark"] {
+    --glass-fill:    rgba(46, 52, 60, .58);
+    --glass-fill-2:  rgba(28, 32, 38, .34);
+    --glass-line:    rgba(255, 255, 255, .10);
+
+    --glass-spec:    rgba(255, 255, 255, .26);
+    --glass-spec-2:  rgba(255, 255, 255, .07);
+    --glass-base:    rgba(0, 0, 0, .34);
+    --glass-ring:    rgba(255, 255, 255, .05);
+
+    --glass-cast:    0 1px 1px rgba(0,0,0,.34), 0 16px 34px -20px rgba(0,0,0,.72);
+    --glass-cast-hi: 0 2px 6px rgba(0,0,0,.44),  0 38px 70px -30px rgba(0,0,0,.86);
+
+    --glass-blur:    18px;
+    --glass-sat:     150%;
+
+    --glow-warm:     242 118 79;
+    --glow-cool:     190 214 255;
+
+    --aur-1: rgba(242, 118, 79, .17);
+    --aur-2: rgba(86, 140, 205, .15);
+    --aur-3: rgba(60, 168, 124, .11);
+    --grid-line: rgba(255, 255, 255, .035);
+
+    --glass-dark-fill: rgba(255, 255, 255, .055);
+    --glass-dark-line: rgba(255, 255, 255, .11);
+    --glass-dark-spec: rgba(255, 255, 255, .22);
+}
+
+/* ==========================================================================
+   1. PLANO DE FUNDO — o que dá o que refratar
+   --------------------------------------------------------------------------
+   Vidro sobre cor chapada não parece vidro: sem variação atrás, o blur não
+   tem o que borrar. A aurora existe para isso — é o "conteúdo" que os
+   cartões distorcem.
+
+   html recebe a cor de fundo para que ela pare de ser propagada pelo <body>;
+   assim o pseudo-elemento em z-index:-1 fica ACIMA da cor e ABAIXO do texto,
+   de forma determinística.
+   ========================================================================== */
+html { background: var(--canvas); }
+
+body {
+    background: transparent;
+    position: relative;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    inset: -25%;
+    z-index: -1;
+    pointer-events: none;
+    /* Sem blur e sem animação, de propósito.
+
+       Esta camada é fixa e ocupa 150% do viewport nos dois eixos. Com
+       `filter: blur(26px)` mais uma animação infinita que a reescala, o
+       navegador tinha de rasterizar o borrão inteiro a cada quadro — era a
+       origem das travadas de mais de um segundo ao rolar a página.
+
+       O desenho não perdeu nada: os três gradientes já terminam em
+       `transparent` por volta dos 60%, o que os deixa mais suaves do que o
+       blur conseguia deixar. As paradas foram alargadas um pouco para
+       recuperar exatamente a difusão que o filtro dava. */
+    background:
+        radial-gradient(42% 46% at 18% 20%, var(--aur-1), transparent 68%),
+        radial-gradient(38% 42% at 84% 12%, var(--aur-2), transparent 66%),
+        radial-gradient(48% 52% at 62% 88%, var(--aur-3), transparent 70%);
+}
+
+/* Malha técnica: 1px, quase invisível, esmaecendo para baixo. É o que dá o
+   ar de instrumento sem gritar "ficção científica".                        */
+body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 72px 72px;
+    -webkit-mask-image: radial-gradient(125% 88% at 50% 0%, #000 8%, transparent 70%);
+            mask-image: radial-gradient(125% 88% at 50% 0%, #000 8%, transparent 70%);
+    opacity: .85;
+}
+
+/* ==========================================================================
+   2. A SUPERFÍCIE DE VIDRO
+   --------------------------------------------------------------------------
+   .sh-glass é a classe utilitária; logo abaixo ela é estendida às classes
+   que os dois design systems já usam, para que nenhuma página precise ser
+   reescrita.
+   ========================================================================== */
+@supports ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+
+    .sh-glass,
+    /* site público */
+    .card:not(.on-dark),
+    .step,
+    .role-card,
+    .plan:not(.featured),
+    .form-card,
+    .faq-item,
+    .legal-toc,
+    /* painel */
+    .admin-panel, .student-panel, .referee-panel, .form-panel, .profile-panel,
+    .results-section, .ranking-section, .players-section, .stats-section,
+    .games-table-section, .game-info-card,
+    .stat-card,
+    .nav-card,
+    .game-card, .result-card, .player-card, .student-card,
+    .designacao,
+    /* tela de login (estilos próprios, mesma paleta) */
+    .account-type-card {
+        position: relative;
+        isolation: isolate;
+
+        /* Duas camadas: o halo que segue o cursor por cima, o corpo leitoso
+           do vidro por baixo. Ambas em background-image, sem depender de
+           ::before/::after — que várias dessas classes já usam.           */
+        background-image:
+            radial-gradient(420px circle at var(--gx, 50%) var(--gy, -10%),
+                rgb(var(--glow-cool) / calc(var(--sh-glow) * .55)),
+                rgb(var(--glow-warm) / calc(var(--sh-glow) * .13)) 38%,
+                transparent 66%),
+            linear-gradient(152deg, var(--glass-fill), var(--glass-fill-2));
+        background-color: transparent;
+        border: 1px solid var(--glass-line);
+
+        /* O backdrop-filter NÃO entra aqui — veja a regra logo abaixo.
+
+           A "espessura" do vidro é toda feita de sombras internas:
+           luz na aresta superior, peso na inferior, anel de contorno.     */
+        box-shadow:
+            inset 0  1px 0 0 var(--glass-spec),
+            inset 1px 0 0 0 var(--glass-spec-2),
+            inset 0 -1px 0 0 var(--glass-base),
+            inset 0 0 0 1px var(--glass-ring),
+            var(--glass-cast);
+
+        transition:
+            transform   .42s var(--ease, cubic-bezier(.22,.61,.36,1)),
+            box-shadow  .42s var(--ease, cubic-bezier(.22,.61,.36,1)),
+            border-color .42s var(--ease, cubic-bezier(.22,.61,.36,1)),
+            --sh-glow   .5s  var(--ease, cubic-bezier(.22,.61,.36,1));
+    }
+
+    /* ── Onde o blur de fundo realmente vale ────────────────────────────
+       `backdrop-filter` obriga o navegador a criar uma camada de composição
+       por elemento e a reamostrar o que está atrás dela a cada quadro. Com
+       ele nos dezoito cartões de um painel, rolar a tela custava frames de
+       mais de um segundo.
+
+       E, nos cartões, ele não fazia diferença visível: um `.stat-card` fica
+       DENTRO de um `.admin-panel` opaco — o que ele borra é uma superfície
+       chapada. Quem se assenta sobre a aurora, e portanto tem o que refratar,
+       são os painéis grandes. O blur ficou só neles.
+
+       E há um segundo motivo, específico do painel: `.admin-panel` e as
+       demais seções do painel recebem `background: var(--surface)` do
+       style.css, que é OPACO. Blur atrás de uma superfície opaca não produz
+       pixel nenhum — só a camada de composição e o custo dela. Ficaram de
+       fora por isso, sem nenhuma diferença visível.
+
+       Os cartões continuam com o mesmo preenchimento, a mesma borda e as
+       mesmas sombras internas: a matéria de vidro permanece, só o custo saiu. */
+    .sh-glass,
+    .form-card,
+    .legal-toc {
+        -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+                backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+    }
+
+    /* Vidro escuro: mesmas regras, matéria diferente. Usado onde o bloco já
+       era escuro por decisão de design (CTA, rodapé, plano em destaque).   */
+    .sh-glass-dark,
+    .card.on-dark,
+    .plan.featured,
+    .scoreboard,
+    .hero-panel {
+        position: relative;
+        isolation: isolate;
+        background-image:
+            radial-gradient(420px circle at var(--gx, 50%) var(--gy, -10%),
+                rgb(var(--glow-warm) / calc(var(--sh-glow) * .22)),
+                transparent 62%),
+            linear-gradient(152deg, var(--glass-dark-fill), rgba(255,255,255,.02));
+        border: 1px solid var(--glass-dark-line);
+        -webkit-backdrop-filter: blur(10px) saturate(140%);
+                backdrop-filter: blur(10px) saturate(140%);
+        box-shadow:
+            inset 0  1px 0 0 var(--glass-dark-spec),
+            inset 0 -1px 0 0 rgba(0,0,0,.34),
+            var(--glass-cast);
+        transition:
+            transform   .42s var(--ease, cubic-bezier(.22,.61,.36,1)),
+            box-shadow  .42s var(--ease, cubic-bezier(.22,.61,.36,1)),
+            border-color .42s var(--ease, cubic-bezier(.22,.61,.36,1)),
+            --sh-glow   .5s  var(--ease, cubic-bezier(.22,.61,.36,1));
+    }
+
+    /* .plan.featured e .scoreboard já tinham fundo escuro próprio: aqui ele
+       vira a base sobre a qual o vidro se assenta, em vez de sumir.        */
+    .plan.featured  { background-color: rgba(28, 31, 36, .82); }
+    .scoreboard     { background-color: rgba(28, 31, 36, .78); }
+    .card.on-dark   { background-color: rgba(255, 255, 255, .015); }
+
+    /* ── Estado ativo ──────────────────────────────────────────────────── */
+    .sh-glass:hover, .sh-glass:focus-within,
+    .card:not(.on-dark):hover, .card:not(.on-dark):focus-within,
+    .step:hover, .role-card:hover, .plan:not(.featured):hover,
+    .form-card:focus-within, .faq-item[open],
+    .stat-card:hover, .nav-card:hover, .nav-card:focus-visible,
+    .game-card:hover, .result-card:hover, .player-card:hover, .student-card:hover,
+    .sh-glass-dark:hover, .card.on-dark:hover, .plan.featured:hover {
+        --sh-glow: 1;
+        border-color: var(--glass-spec);
+        box-shadow:
+            inset 0  1px 0 0 var(--glass-spec),
+            inset 1px 0 0 0 var(--glass-spec-2),
+            inset 0 -1px 0 0 var(--glass-base),
+            inset 0 0 0 1px var(--glass-ring),
+            var(--glass-cast-hi);
+    }
+
+    .sh-glass-dark:hover, .card.on-dark:hover, .plan.featured:hover {
+        border-color: var(--glass-dark-spec);
+    }
+
+    /* O aviso de designação em andamento precisa manter a borda âmbar: ela é
+       o sinal de "acontecendo agora", não decoração. */
+    .designacao--vivo { border-color: var(--ember); }
+
+    /* Painéis grandes recebem vidro, mas não levitam: um bloco de 900px
+       subindo 4px no hover parece defeito, não resposta.                   */
+    .admin-panel, .student-panel, .referee-panel, .form-panel, .profile-panel,
+    .results-section, .ranking-section, .players-section, .stats-section,
+    .games-table-section, .legal-toc {
+        --sh-glow: 0;
+    }
+
+    /* ── Cabeçalhos fixos ─────────────────────────────────────────────── */
+    .site-nav, .main-header {
+        /* Raio menor porque este elemento é sticky: o navegador refaz o
+           borrão a cada quadro enquanto a página rola, e o custo cresce com
+           o raio. Em 10px o efeito continua legível sobre a aurora. */
+        -webkit-backdrop-filter: blur(10px) saturate(150%);
+                backdrop-filter: blur(10px) saturate(150%);
+        box-shadow: inset 0 -1px 0 0 var(--glass-ring);
+    }
+    .site-nav.scrolled, .main-header {
+        box-shadow:
+            inset 0 -1px 0 0 var(--glass-ring),
+            0 10px 30px -22px rgba(0,0,0,.45);
+    }
+
+    /* ── Modais ───────────────────────────────────────────────────────
+       O banner de cookies saiu daqui: o site.css lhe dá um fundo sólido
+       (#1C1F24), e blur atrás de superfície opaca não muda um pixel — só
+       cria mais uma camada de composição, e ainda por cima numa caixa
+       `position: fixed`, que o navegador recompõe a cada rolagem. */
+    .modal-content, .modal .modal-box {
+        -webkit-backdrop-filter: blur(16px) saturate(160%);
+                backdrop-filter: blur(16px) saturate(160%);
+    }
+}
+
+/* ── Troca de tema sem arrasto ──────────────────────────────────────────
+   As transições de cor existem para o hover, não para a troca de tema. Ao
+   inverter claro/escuro elas produziriam um borrão de meio segundo — e, pior,
+   nos blocos fora da área visível o navegador congela a interpolação no meio,
+   deixando cartões com a borda do tema anterior até que se role até eles.
+   O JS marca a raiz durante a troca; aqui tudo para por um instante.      */
+.sh-tema-trocando,
+.sh-tema-trocando *,
+.sh-tema-trocando *::before,
+.sh-tema-trocando *::after {
+    transition: none !important;
+}
+
+/* ==========================================================================
+   3. VARREDURA ESPECULAR
+   --------------------------------------------------------------------------
+   O reflexo que cruza o cartão quando o ponteiro entra. Só é aplicado em
+   elementos marcados com .sh-sheen — o JS marca os cartões pequenos, onde o
+   efeito ajuda; nos painéis grandes ele só distrai.
+   ========================================================================== */
+.sh-sheen { overflow: hidden; }
+
+.sh-sheen > .sh-sheen-bar {
+    position: absolute;
+    inset: -40% -60%;
+    z-index: 3;
+    pointer-events: none;
+    background: linear-gradient(
+        104deg,
+        transparent 38%,
+        rgb(var(--glow-cool) / .30) 48%,
+        rgb(var(--glow-cool) / .06) 56%,
+        transparent 64%);
+    transform: translateX(-115%);
+    opacity: 0;
+}
+
+.sh-sheen:hover > .sh-sheen-bar {
+    animation: sh-sweep .95s cubic-bezier(.3,.7,.35,1) 1;
+}
+
+@keyframes sh-sweep {
+    0%   { transform: translateX(-115%); opacity: 0; }
+    12%  { opacity: 1; }
+    100% { transform: translateX(115%);  opacity: 0; }
+}
+
+/* ==========================================================================
+   4. MICROINTERAÇÕES
+   ========================================================================== */
+
+/* Botões: vidro por cima do preenchimento sólido — mantém o contraste do
+   texto (o botão continua sendo uma cor cheia) e ganha a aresta de luz.   */
+.btn, button.btn, a.btn {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+.btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,0) 58%);
+    opacity: .9;
+}
+.btn-ghost::after, .btn-outline::after { opacity: .35; }
+
+/* Ondulação no clique — o JS posiciona a origem em --rx/--ry. */
+.sh-ripple {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0);
+    background: radial-gradient(circle, rgba(255,255,255,.55), rgba(255,255,255,0) 70%);
+    animation: sh-ripple .62s ease-out forwards;
+    z-index: 0;
+}
+@keyframes sh-ripple {
+    to { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+/* Ícones dos cartões: o quadradinho vira uma peça de vidro colorida. */
+.card-icon, .nav-card-icon {
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.45),
+        inset 0 -1px 0 rgba(0,0,0,.06);
+}
+.card-icon::after, .nav-card-icon::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(150deg, rgba(255,255,255,.35), transparent 55%);
+    pointer-events: none;
+}
+
+/* Selo "ao vivo": pulso contínuo, porque o dado por trás dele também é. */
+.status-badge.em_andamento, .live-badge, .game-status.em_andamento, .status-badge.live {
+    position: relative;
+    animation: sh-live 2.4s ease-in-out infinite;
+}
+@keyframes sh-live {
+    0%, 100% { box-shadow: 0 0 0 0 rgb(var(--glow-warm) / .34); }
+    55%      { box-shadow: 0 0 0 7px rgb(var(--glow-warm) / 0); }
+}
+
+/* Números grandes: sobem quando entram na tela (o JS conta o valor). */
+.stat-number, .hero-meta-num, .hero-stat-num {
+    font-variant-numeric: tabular-nums;
+    transition: transform .5s var(--ease, cubic-bezier(.22,.61,.36,1));
+}
+.stat-card:hover .stat-number { transform: translateY(-2px); }
+
+/* Linhas de tabela: realce discreto que acompanha o cursor. */
+.data-table tbody tr, table tbody tr {
+    transition: background-color .22s ease, transform .22s ease;
+}
+
+/* ==========================================================================
+   5. FOCO VISÍVEL (acessibilidade — SH-62)
+   --------------------------------------------------------------------------
+   O vidro reduz o peso das bordas; sem um anel de foco explícito, quem
+   navega por teclado perde a posição. Vale para os dois temas.
+   ========================================================================== */
+:focus-visible {
+    outline: 2px solid var(--ember);
+    outline-offset: 3px;
+    border-radius: 6px;
+}
+.btn:focus-visible, .nav-card:focus-visible, .card:focus-visible {
+    outline-offset: 4px;
+}
+/* O navegador esconde o outline em elemento com overflow:hidden e cantos
+   arredondados grandes; o anel duplicado garante que ele apareça.        */
+.sh-sheen:focus-visible, .btn:focus-visible {
+    box-shadow: 0 0 0 3px rgb(var(--glow-warm) / .32), var(--glass-cast);
+}
+
+/* ==========================================================================
+   6. ENTRADA EM CENA
+   --------------------------------------------------------------------------
+   .reveal já existia em site.css. Aqui ele ganha um leve deslocamento em
+   profundidade, e a mesma mecânica passa a valer no painel.
+   ========================================================================== */
+.js .sh-reveal {
+    opacity: 0;
+    transform: translateY(18px) scale(.985);
+    transition:
+        opacity   .7s var(--ease, cubic-bezier(.22,.61,.36,1)),
+        transform .7s var(--ease, cubic-bezier(.22,.61,.36,1));
+}
+.js .sh-reveal.visible {
+    opacity: 1;
+    transform: none;
+}
+
+/* ==========================================================================
+   7. MOVIMENTO REDUZIDO
+   --------------------------------------------------------------------------
+   Quem pediu menos movimento no sistema operacional recebe o vidro parado:
+   a aparência permanece, a animação some por inteiro.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+    .sh-sheen:hover > .sh-sheen-bar { animation: none; opacity: 0; }
+    .sh-ripple { display: none; }
+    .status-badge.em_andamento, .live-badge,
+    .game-status.em_andamento, .status-badge.live { animation: none; }
+    .js .sh-reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* ==========================================================================
+   8. AJUSTES DE DENSIDADE
+   --------------------------------------------------------------------------
+   backdrop-filter é caro. Em telas pequenas — onde há muitos cartões
+   empilhados e o hardware costuma ser mais fraco — o blur é reduzido, e o
+   preenchimento sobe para compensar a perda de separação.
+   ========================================================================== */
+@media (max-width: 720px) {
+    :root, [data-theme="light"] { --glass-blur: 10px; --glass-fill: rgba(255,255,255,.74); }
+    [data-theme="dark"]         { --glass-blur: 11px; --glass-fill: rgba(46,52,60,.70); }
+    body::after { display: none; }
+}
+
+/* Impressão: o vidro vira papel. */
+@media print {
+    body::before, body::after { display: none; }
+    .sh-glass, .card, .step, .plan, .stat-card, .admin-panel,
+    .student-panel, .referee-panel, .game-card, .result-card {
+        background: #fff !important;
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+        -webkit-backdrop-filter: none !important;
+                backdrop-filter: none !important;
+    }
+}

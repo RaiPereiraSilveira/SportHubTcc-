@@ -1,0 +1,340 @@
+/* ==========================================================================
+   SPORTHUB — classes utilitárias (SH-37)
+   --------------------------------------------------------------------------
+   Este arquivo existe por causa da Content-Security-Policy.
+
+   Um atributo `style=""` escrito no HTML é estilo embutido, e a CSP só o
+   aceita com `style-src 'unsafe-inline'` — a mesma permissão que deixa
+   passar o estilo injetado por um XSS. Nonce não cobre atributo; a única
+   forma de tirar 'unsafe-inline' era não ter mais nenhum `style=""`.
+
+   Então os ajustes pontuais que estavam espalhados pelas páginas (uma
+   largura de coluna aqui, uma cor de destaque ali) foram recolhidos para cá,
+   um por declaração, e o HTML passou a citá-los por classe.
+
+   Convenções:
+
+   · O nome descreve a primeira declaração: `.u-font-size-1rem`,
+     `.u-color-muted`. É feio de propósito — utilitária não deve competir
+     com o nome de um componente de verdade.
+   · Nada aqui inventa estilo novo: cada regra é exatamente o que já estava
+     escrito no atributo que ela substituiu.
+   · Quando um ajuste se repete muitas vezes, ele é candidato a virar
+     componente em style.css ou site.css. `.u-font-size-1rem`, com 28 usos,
+     é o primeiro da fila — é sempre o ícone dentro de um botão.
+
+   Carregado por último, depois de site.css, style.css e glass.css, para que
+   o ajuste pontual continue vencendo — que era o comportamento do atributo.
+   ========================================================================== */
+
+/* Botão que se comporta como link dentro de um parágrafo (login.php). */
+.link-inline {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--ember);
+    font-weight: 600;
+    font-size: .85rem;
+    cursor: pointer;
+    text-decoration: underline;
+    font-family: inherit;
+}
+
+/* 28x · 404.php, cadastro-arbitro.php, index.php e outros */
+.u-font-size-1rem { font-size:1rem }
+
+/* 16x · assinar.php, index.php, lgpd.php e outros */
+.u-color-muted { color:var(--muted) }
+
+/* 7x · cadastro-arbitro.php, como-funciona.php, index.php e outros */
+.u-background-surface-2 { background:var(--surface-2); border-block:1px solid var(--line) }
+
+/* 5x · cadastro-arbitro.php, contato.php */
+.u-color-ember { color:var(--ember) }
+
+/* 4x · contato.php */
+.u-gap-10px { gap:10px; color:var(--ink-soft) }
+
+/* 4x · assinar.php, cadastro-arbitro.php, lgpd.php */
+.u-margin-bottom-0 { margin-bottom:0 }
+
+/* 4x · index.php */
+.u-padding-24px { padding:24px }
+
+/* 3x · admin/assinaturas.php, admin/lgpd.php, admin/solicitacoes_arbitros.php */
+.u-margin-top-4px { margin-top:4px }
+
+/* 3x · assinar.php, contato.php */
+.u-padding-26px { padding:26px }
+
+/* 3x · admin/dashboard.php */
+.u-text-decoration-underline { text-decoration:underline }
+
+/* 3x · cookies.php, privacidade.php */
+.u-width-150px { width:150px }
+
+/* 2x · cadastro-arbitro.php, lgpd.php */
+.u-color-ember-2 { color:var(--ember); margin-right:8px }
+
+/* 2x · assinar.php, contato.php */
+.u-display-grid { display:grid; gap:26px; align-items:start }
+
+/* 2x · cadastro-arbitro.php, lgpd.php */
+.u-flex-1 { flex:1; min-width:220px; margin:0 }
+
+/* 2x · contato.php */
+.u-font-size-1-05rem { font-size:1.05rem }
+
+/* 2x · cadastro-arbitro.php, lgpd.php */
+.u-gap-10px-2 { gap:10px }
+
+/* 2x · admin/assinaturas.php, admin/solicitacoes_arbitros.php */
+.u-margin-top-14px { margin-top:14px }
+
+/* 2x · admin/lgpd.php, admin/solicitacoes_arbitros.php */
+.u-margin-top-16px { margin-top:16px }
+
+/* 2x · admin/dashboard.php */
+.u-margin-top-34px { margin-top:34px }
+
+/* 2x · cadastro-arbitro.php, lgpd.php */
+.u-padding-bottom-0 { padding-bottom:0 }
+
+/* 2x · cookies.php */
+.u-width-170px { width:170px }
+
+/* 2x · admin/solicitacoes_arbitros.php, privacidade.php */
+.u-width-180px { width:180px }
+
+/* 2x · lgpd.php, privacidade.php */
+.u-width-200px { width:200px; color:var(--muted) }
+
+/* 1x · admin/dashboard.php */
+.u-align-items-flex-start { align-items:flex-start }
+
+/* 1x · planos.php */
+.u-background-surface-2-2 { background:var(--surface-2); font-family:var(--font-display); font-size:.78rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ember) }
+
+/* 1x · admin/solicitacoes_arbitros.php */
+.u-border-color-green { border-color:var(--green); background:var(--green-bg) }
+
+/* 1x · perfil.php */
+.u-color-muted-2 { color: var(--muted); font-size: 0.8rem }
+
+/* 1x · contato.php */
+.u-color-25d366 { color:#25D366; width:18px }
+
+/* 1x · contato.php */
+.u-color-c13584 { color:#C13584; width:18px }
+
+/* 1x · login.php */
+.u-color-fff { color:#fff }
+
+/* 1x · index.php */
+.u-color-rgba-255-255-255-42 { color:rgba(255,255,255,.42) }
+
+/* 1x · index.php */
+.u-color-rgba-255-255-255-82 { color:rgba(255,255,255,.82) }
+
+/* 1x · contato.php */
+.u-color-blue { color:var(--blue); width:18px }
+
+/* 1x · assinar.php */
+.u-color-ember-3 { color:var(--ember); text-decoration:underline }
+
+/* 1x · login.php */
+.u-color-ember-4 { color:var(--ember); text-decoration:underline; font-weight:600 }
+
+/* 1x · contato.php */
+.u-color-ember-5 { color:var(--ember); width:18px }
+
+/* 1x · index.php */
+.u-color-ember-light { color:var(--ember-light); text-decoration:underline }
+
+/* 1x · admin/solicitacoes_arbitros.php */
+.u-color-green { color:var(--green) }
+
+/* 1x · admin/solicitacoes_arbitros.php */
+.u-color-ink-soft { color:var(--ink-soft) }
+
+/* 1x · index.php */
+.u-color-muted-2-2 { color:var(--muted-2) }
+
+/* 1x · aluno/jogos.php */
+.u-cursor-pointer { cursor:pointer }
+
+/* 1x · cadastro-arbitro.php */
+.u-display-grid-2 { display:grid; gap:12px }
+
+/* 1x · assinar.php */
+.u-display-grid-3 { display:grid; gap:12px; counter-reset:li }
+
+/* 1x · admin/dashboard.php */
+.u-display-grid-4 { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:22px; margin-top:26px }
+
+/* 1x · aluno/jogos.php */
+.u-display-none { display:none }
+
+/* 1x · admin/dashboard.php */
+.u-flex-1-2 { flex:1; min-width:0 }
+
+/* 1x · index.php */
+.u-font-family-font-display { font-family:var(--font-display); font-size:1.3rem; font-weight:600; letter-spacing:-.03em; color:var(--ink) }
+
+/* 1x · admin/solicitacoes_arbitros.php */
+.u-font-family-font-display-2 { font-family:var(--font-display); letter-spacing:.1em }
+
+/* 1x · aluno/telao.php */
+.u-font-size-5em { font-size:.5em }
+
+/* 1x · includes/header.php */
+.u-font-size-62rem { font-size:.62rem; opacity:.6 }
+
+/* 1x · assinar.php */
+.u-font-size-1-4rem { font-size:1.4rem }
+
+/* 1x · admin/assinaturas.php */
+.u-font-size-1-6rem { font-size:1.6rem }
+
+/* 1x · assinar.php */
+.u-font-size-2-3rem { font-size:2.3rem }
+
+/* 1x · index.php */
+.u-font-size-5px { font-size:5px }
+
+/* 1x · 404.php */
+.u-font-size-clamp-3rem-10vw-6rem { font-size:clamp(3rem,10vw,6rem); letter-spacing:-.06em }
+
+/* 1x · index.php */
+.u-gap-16px { gap:16px }
+
+/* 1x · 404.php */
+.u-justify-content-center { justify-content:center }
+
+/* 1x · assinar.php */
+.u-justify-content-center-2 { justify-content:center; gap:16px }
+
+/* 1x · aluno/jogos.php */
+.u-margin-bottom-20px { margin-bottom: 20px }
+
+/* 1x · admin/lgpd.php */
+.u-margin-bottom-18px { margin-bottom:18px }
+
+/* 1x · admin/editar_jogo.php */
+.u-margin-left-10px { margin-left:10px }
+
+/* 1x · admin/designar_jogos.php */
+.u-margin-top-30px { margin-top: 30px }
+
+/* 1x · aluno/classificacao.php */
+.u-margin-top-40px { margin-top: 40px }
+
+/* 1x · admin/dashboard.php */
+.u-margin-top-18px { margin-top:18px }
+
+/* 1x · admin/lgpd.php */
+.u-margin-top-18px-2 { margin-top:18px; padding-top:18px; border-top:1px solid var(--line) }
+
+/* 1x · admin/editar_jogo.php */
+.u-margin-top-20px { margin-top:20px }
+
+/* 1x · index.php */
+.u-margin-0 { margin:0 }
+
+/* 1x · assinar.php */
+.u-margin-0-2 { margin:0; padding:0; border:none }
+
+/* 1x · assinar.php */
+.u-margin-20px04px { margin:20px 0 4px }
+
+/* 1x · 404.php */
+.u-margin-20pxauto0 { margin:20px auto 0 }
+
+/* 1x · assinar.php */
+.u-margin-22px0 { margin:22px 0 }
+
+/* 1x · admin/assinaturas.php */
+.u-max-width-150px { max-width:150px }
+
+/* 1x · admin/lgpd.php */
+.u-max-width-200px { max-width:200px }
+
+/* 1x · assinar.php */
+.u-max-width-760px { max-width:760px; margin-inline:auto }
+
+/* 1x · planos.php */
+.u-max-width-820px { max-width:820px; margin-inline:auto }
+
+/* 1x · 404.php */
+.u-min-height-52vh { min-height:52vh; display:grid; place-items:center }
+
+/* 1x · index.php */
+.u-min-width-0 { min-width:0 }
+
+/* 1x · planos.php */
+.u-min-width-240px { min-width:240px }
+
+/* 1x · planos.php */
+.u-padding-top-clamp-48px-6vw-72px { padding-top:clamp(48px,6vw,72px) }
+
+/* 1x · index.php */
+.u-padding-32px { padding:32px }
+
+/* 1x · aluno/telao.php */
+.u-padding-40px0 { padding:40px 0; color:var(--tinta-3) }
+
+/* 1x · contato.php */
+.u-position-absolute { position:absolute; left:-9999px }
+
+/* 1x · planos.php */
+.u-text-align-center { text-align:center }
+
+/* 1x · login.php */
+.u-text-align-center-2 { text-align:center; font-size:.85rem; color:var(--gray-600) }
+
+/* 1x · login.php */
+.u-text-align-center-3 { text-align:center; margin-top:16px; color:var(--gray-600); font-size:.9rem }
+
+/* 1x · 404.php */
+.u-text-align-left { text-align:left }
+
+/* 1x · cookies.php */
+.u-text-decoration-none { text-decoration:none }
+
+/* 1x · login.php */
+.u-text-transform-none { text-transform:none; letter-spacing:0 }
+
+/* 1x · termos.php */
+.u-width-190px { width:190px }
+
+/* 1x · privacidade.php */
+.u-width-220px { width:220px }
+
+/* 1x · privacidade.php */
+.u-width-230px { width:230px }
+
+/* 1x · login.php */
+.u-width-42px { width:42px; height:42px; object-fit:contain; display:block; border-radius:10px }
+
+/* 1x · admin/team_logos.php */
+.u-width-84px { width:84px; height:84px; object-fit:cover; border-radius:8px; border:1px solid var(--line) }
+
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Estado, não enfeite
+
+   Estes três eram os únicos `style=""` que dependiam de dado — a mensagem
+   ainda não lida, a requisição LGPD fora do prazo. Viraram classes de estado
+   porque é isso que sempre foram: um `if` no servidor decidindo uma cor.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Mensagem do site ainda não lida (admin/assinaturas.php). */
+.is-nao-lido { border-color: var(--ember); }
+
+/* Requisição de titular com prazo estourado (admin/lgpd.php). */
+.is-atrasada { border-color: var(--red); }
+
+.is-atrasada-texto {
+    color: var(--red);
+    font-weight: 600;
+}
